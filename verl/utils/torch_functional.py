@@ -115,6 +115,12 @@ def entropy_from_logits(logits: torch.Tensor):
     return entropy
 
 
+def self_certainty_from_logits(logits: torch.Tensor):
+    """Calculate self-certainty from logits."""
+    self_certainty = torch.logsumexp(logits, dim=-1) - logits.mean(dim=-1)
+    return self_certainty
+
+
 def masked_sum(values, mask, axis=None):
     """Compute mean of tensor with a masked values."""
     return (values * mask).sum(axis=axis)

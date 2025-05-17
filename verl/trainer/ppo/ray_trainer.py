@@ -89,6 +89,7 @@ class AdvantageEstimator(str, Enum):
     REINFORCE_PLUS_PLUS_BASELINE = "reinforce_plus_plus_baseline"
     REMAX = "remax"
     RLOO = "rloo"
+    INTUITOR = "intuitor"
 
 
 @dataclass
@@ -208,9 +209,37 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
             response_length = grpo_calculation_mask.size(1)  # Get length from the initial response mask
             grpo_calculation_mask = data.batch["loss_mask"][:, -response_length:]  # This mask is the one intended for GRPO
         # Call compute_grpo_outcome_advantage with parameters matching its definition
+        print('-------------------------------- This is GRPO --------------------------------')
+        print(f"data.batch['token_level_rewards'].shape: {data.batch['token_level_rewards'].shape}")
+        print(f"data.batch['token_level_rewards']: {data.batch['token_level_rewards']}")
+        print(f"data.batch['old_log_probs']: {data.batch['old_log_probs']}")
+        print(f"data.batch['old_log_probs'].shape: {data.batch['old_log_probs'].shape}")
+        # print reward sum
+        print(f"data.batch['token_level_rewards'].sum(): {data.batch['token_level_rewards'].sum()}")
+        # print reward sum for each generation
+        print(f"data.batch['token_level_rewards'].sum(dim=1): {data.batch['token_level_rewards'].sum(dim=1)}")
+        print('-------------------------------- End of GRPO --------------------------------')
+
         advantages, returns = core_algos.compute_grpo_outcome_advantage(
             token_level_rewards=data.batch["token_level_rewards"],
             response_mask=grpo_calculation_mask,
+            index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.INTUITOR:
+        intuitor_calculation_mask = data.batch["response_mask"]
+
+        print('-------------------------------- This is Intuitor --------------------------------')
+        print(f"data.batch['self_certaintys'].shape: {data.batch['self_certaintys'].shape}")
+        print(f"data.batch['self_certaintys']: {data.batch['self_certaintys']}")
+        print('-------------------------------- End of Intuitor --------------------------------')
+        # Call compute_grpo_outcome_advantage with parameters matching its definition
+        advantages, returns = core_algos.compute_grpo_outcome_advantage( # Intuitor training is a special case of GRPO
+            # token_level_rewards=data.batch["token_level_rewards"],
+            token_level_rewards=data.batch["self_certaintys"], # we use token_level_self_certainty as reward
+            response_mask=intuitor_calculation_mask,
             index=data.non_tensor_batch["uid"],
             norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
         )
@@ -319,6 +348,7 @@ class RayPPOTrainer:
             AdvantageEstimator.REMAX,
             AdvantageEstimator.RLOO,
             AdvantageEstimator.REINFORCE_PLUS_PLUS_BASELINE,
+            AdvantageEstimator.INTUITOR,
         ]:
             self.use_critic = False
         else:
