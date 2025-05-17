@@ -1,3 +1,5 @@
+set -x
+
 export WANDB_API_KEY=b83780f6c5922000838652bb1aba38ff4e926886
 export ACCELERATE_LOG_LEVEL=info
 export HYDRA_FULL_ERROR=1
@@ -24,6 +26,9 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=False \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
+    actor_rollout_ref.ref.sync_ref_model=True \
+    actor_rollout_ref.ref.ref_model_sync_steps=1 \
+    actor_rollout_ref.ref.ref_model_mixup_alpha=1 \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
     actor_rollout_ref.rollout.name=vllm \
@@ -38,7 +43,7 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
     trainer.nnodes=1 \
     trainer.logger=['console','wandb'] \
     trainer.project_name=verl \
-    trainer.experiment_name=demo_intuitor \
+    trainer.experiment_name=demo_intuitor_online \
     trainer.save_freq=10 \
     trainer.test_freq=5 \
-    trainer.total_epochs=15 2>&1 | tee verl_demo_intuitor.log
+    trainer.total_epochs=15 2>&1 | tee verl_demo_intuitor_online.log

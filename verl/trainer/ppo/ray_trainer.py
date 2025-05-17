@@ -792,8 +792,18 @@ class RayPPOTrainer:
             print("Warning: remove_previous_ckpt_in_save is deprecated," + " set max_actor_ckpt_to_keep=1 and max_critic_ckpt_to_keep=1 instead")
         max_actor_ckpt_to_keep = self.config.trainer.get("max_actor_ckpt_to_keep", None) if not remove_previous_ckpt_in_save else 1
         max_critic_ckpt_to_keep = self.config.trainer.get("max_critic_ckpt_to_keep", None) if not remove_previous_ckpt_in_save else 1
+        max_ref_ckpt_to_keep = self.config.trainer.get("max_ref_ckpt_to_keep", None) if not remove_previous_ckpt_in_save else 1
 
         self.actor_rollout_wg.save_checkpoint(actor_local_path, actor_remote_path, self.global_steps, max_ckpt_to_keep=max_actor_ckpt_to_keep)
+
+        if self.config.actor_rollout_ref.ref.sync_actor:
+            ref_local_path = os.path.join(local_global_step_folder, "ref")
+            ref_remote_path = (
+                None
+                if self.config.trainer.default_hdfs_dir is None
+                else os.path.join(self.config.trainer.default_hdfs_dir, f"global_step_{self.global_steps}", "ref")
+            )
+            self.ref_policy_wg.save_checkpoint(ref_local_path, ref_remote_path, self.global_steps, max_ckpt_to_keep=max_ref_ckpt_to_keep)
 
         if self.use_critic:
             critic_local_path = os.path.join(local_global_step_folder, "critic")
@@ -914,6 +924,9 @@ class RayPPOTrainer:
         self.global_steps += 1
         last_val_metrics = None
 
+        rank_id_tuples = self.actor_rollout_wg.get_actor_module()
+        self.ref_policy_wg.ref_bind_actors(rank_id_tuples)
+        
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
                 metrics = {}
