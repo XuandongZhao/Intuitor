@@ -237,6 +237,7 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
         print(f"data.batch['response_mask']: {data.batch['response_mask']}")
         print(f"sentence_wise_mean: {sentence_wise_mean}")
         print(f"sentence_wise_mean.shape: {sentence_wise_mean.shape}")
+        print(f"token_level_rewards: {token_level_rewards}")
         print('-------------------------------- End of Intuitor --------------------------------')
 
         # Use this in the GRPO advantage computation
